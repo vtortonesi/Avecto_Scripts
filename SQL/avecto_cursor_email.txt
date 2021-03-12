@@ -1,0 +1,57 @@
+USE AvectoPrivilegeGuard
+GO
+
+SET QUOTED_IDENTIFIER OFF
+
+IF EXISTS(Select Count(*) FROM Messages
+Having COUNT(Messages.MessageGUID) > 10)
+
+BEGIN
+
+DECLARE @query nvarchar (MAX)
+SET @query = 'SELECT DISTINCT ProcessID,
+				p.ProcessStartTime,
+				p.FileName,
+				(m.Name) ''Message Name'',
+				u.Name ''User'',
+				h.Name ''Machine''
+				FROM processes p 
+				JOIN TokenAssignments t ON p.TokenAssignmentID = t.TokenAssignmentID
+				JOIN Messages m ON t.MessageGUID = m.MessageGUID
+				JOIN users u ON p.UserID = u.UserID
+				JOIN hosts h ON p.HostID = p.HostID
+				AND m.Name LIKE ''%Challenge%''
+
+				GROUP BY p.ProcessStartTime, p.FileName, m.Name, u.Name, h.Name, p.ProcessID'''
+
+DECLARE @processid int
+DECLARE @ProcessStartTime Datetime
+DECLARE @FileName  nvarchar(1000)
+DECLARE @Message nvarchar(1000)
+DECLARE @host nvarchar(1000)
+DECLARE @user nvarchar (100)
+
+DECLARE Email CURSOR 
+  LOCAL STATIC READ_ONLY FORWARD_ONLY
+FOR EA
+OPEN Email
+FETCH NEXT FROM Email INTO @ProcessID, @ProcessStartTime, @FileName, @Message, @host, @user
+WHILE @@FETCH_STATUS = 0
+	BEGIN 
+		USE MSDB
+		EXEC sp_send_dbmail
+		@profile_name = 'Email Alerts',
+		@recipients ='vince_@av.local',
+		@subject ='My Test Mail Service.',
+		@body ='Database Mail Received Successfully',
+		@body_format = 'Text',
+		@query = @query,
+		@attach_query_result_as_file = 1,
+		@query_result_width = '50000'
+    
+		FETCH NEXT FROM Email INTO @ProcessID, @ProcessStartTime, @FileName, @Message, @host, @user
+		END
+		CLOSE Email
+		DEALLOCATE Email
+
+END
