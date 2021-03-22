@@ -1,0 +1,93 @@
+SELECT 
+	'24 Hours' 'Time Range',
+		CASE 
+			WHEN da.Description = '{' THEN 'PowerShell' ELSE da.Description END AS 'Description',
+		pp.FileName AS 'Parent Process',
+		pp.ProcessStartTime AS 'Process Start Time',
+		pp.CommandLine AS 'Command Line Called',
+		u.[Name] AS 'User',
+		h.[Name] AS 'Host',
+		CASE
+			WHEN pp.UACTriggered = 1 THEN 'Yes' ELSE 'No' END AS 'UAC Triggered',
+		CASE 
+			WHEN pp.Elevated = 1 THEN 'Yes' ELSE 'No' END AS 'Process Elevated'
+
+	FROM Processes pp 
+	JOIN DistinctApplications da ON pp.DistinctApplicationID = da.DistinctApplicationID 
+	JOIN Users U ON pp.UserID = u.UserID
+	JOIN Hosts h ON pp.HostID = h.HostID
+
+WHERE DATEDIFF(HH, pp.ProcessStartTime, GetDate()) <= 24
+
+UNION ALL
+
+SELECT 
+	'7 Days' 'Time Range',
+	CASE 
+			WHEN da.Description = '{' THEN 'PowerShell' ELSE da.Description END AS 'Description',
+		pp.FileName AS 'Parent Process',
+		pp.ProcessStartTime AS 'Process Start Time',
+		pp.CommandLine AS 'Command Line Called',
+		u.[Name] AS 'User',
+		h.[Name] AS 'Host',
+		CASE
+			WHEN pp.UACTriggered = 1 THEN 'Yes' ELSE 'No' END AS 'UAC Triggered',
+		CASE 
+			WHEN pp.Elevated = 1 THEN 'Yes' ELSE 'No' END AS 'Process Elevated'
+
+	FROM Processes pp 
+	JOIN DistinctApplications da ON pp.DistinctApplicationID = da.DistinctApplicationID 
+	JOIN Users U ON pp.UserID = u.UserID
+	JOIN Hosts h ON pp.HostID = h.HostID
+
+WHERE DATEDIFF(DD, pp.ProcessStartTime, GetDate()) <= 7
+
+UNION ALL
+
+SELECT 
+	'30 Days' 'Time Range',
+		CASE 
+			WHEN da.Description = '{' THEN 'PowerShell' ELSE da.Description END AS 'Description',
+		pp.FileName AS 'Parent Process',
+		pp.ProcessStartTime AS 'Process Start Time',
+		pp.CommandLine AS 'Command Line Called',
+		u.[Name] AS 'User',
+		h.[Name] AS 'Host',
+		CASE
+			WHEN pp.UACTriggered = 1 THEN 'Yes' ELSE 'No' END AS 'UAC Triggered',
+		CASE 
+			WHEN pp.Elevated = 1 THEN 'Yes' ELSE 'No' END AS 'Process Elevated'
+
+	FROM Processes pp 
+	JOIN DistinctApplications da ON pp.DistinctApplicationID = da.DistinctApplicationID 
+	JOIN Users U ON pp.UserID = u.UserID
+	JOIN Hosts h ON pp.HostID = h.HostID
+
+WHERE DATEDIFF(DD, pp.ProcessStartTime, GetDate()) <= 30
+
+UNION ALL
+
+SELECT 
+	'12 Months' 'Time Range',
+		CASE 
+			WHEN da.Description = '{' THEN 'PowerShell' ELSE da.Description END AS 'Description',
+		pp.FileName AS 'Parent Process',
+		pp.ProcessStartTime AS 'Process Start Time',
+		pp.CommandLine AS 'Command Line Called',
+		u.[Name] AS 'User',
+		h.[Name] AS 'Host',
+		CASE
+			WHEN pp.UACTriggered = 1 THEN 'Yes' ELSE 'No' END AS 'UAC Triggered',
+		CASE 
+			WHEN pp.Elevated = 1 THEN 'Yes' ELSE 'No' END AS 'Process Elevated'
+
+	FROM Processes pp 
+	JOIN DistinctApplications da ON pp.DistinctApplicationID = da.DistinctApplicationID 
+	JOIN Users U ON pp.UserID = u.UserID
+	JOIN Hosts h ON pp.HostID = h.HostID
+
+WHERE DATEDIFF(MM, pp.ProcessStartTime, GetDate()) <= 12
+
+GROUP BY pp.ProcessStartTime, pp.FileName, da.Description, pp.FileName, 
+pp.CommandLine, pp.UACTriggered, pp.Elevated, u.[Name], h.[Name]
+ORDER BY 'Time Range' DESC
