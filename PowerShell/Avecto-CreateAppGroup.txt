@@ -1,0 +1,38 @@
+#Load Defendpoint Cmdlets
+Import-Module "C:\Program Files\Avecto\Privilege Guard Client\PowerShell\Avecto.Defendpoint.Cmdlets\Avecto.Defendpoint.Cmdlets.dll"
+
+#Create new policy
+$policy = New-Object Avecto.Defendpoint.Settings.Configuration
+
+#Prompt user for file path, create variable for data source
+$csvPath = Read-Host "Please Enter Path of .csv file"
+$app = Import-Csv -Path $csvPath
+
+#Create application group and meta data
+$appGroup = New-Object Avecto.Defendpoint.Settings.ApplicationGroup
+$appGroup.Name = "Trusted Applications"
+$appGroup.Description = "Corporate Trusted Applications"
+$policy.ApplicationGroups.Add($appGroup)
+
+#Array variable for Application Group
+$appGroupArray = 0
+
+#Create application group rules.  Enable application definitions (as you add properties make sure you add additional Check...)
+foreach ($a in $app){
+
+    $appRules = New-Object Avecto.Defendpoint.Settings.Application $policy
+    $appRules.Type = [Avecto.Defendpoint.Settings.ApplicationType]::Executable
+    $appRules.Description = $a.Description
+    $appRules.FileName = $a.FileName
+    $appRules.Publisher = $a.Publisher
+    $appRules.PublisherMatchCase = $true
+    $appRules.ProductName = $a.ProductName
+
+    $appRules.CheckFileName = $true
+    $appRules.CheckPublisher = $true
+    $appRules.CheckProductName =$true
+
+    $policy.ApplicationGroups[$appGroupArray].Applications.Add($appRules)
+}
+
+Set-DefendpointSettings -SettingsObject $policy -LocalFile -FileLocation "$($env:Temp)\appRules.xml"
