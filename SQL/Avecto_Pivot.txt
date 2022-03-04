@@ -1,0 +1,29 @@
+SET NOCOUNT ON
+Select * FROM 
+(SELECT  
+	pol.Name 'Workstyle',
+	AppGroups.Name 'AppGroup', 
+	da.Publisher, 
+	Processes.FileName
+	--Processes.Elevated
+FROM AppGroups
+    JOIN
+    TokenAssignments ON AppGroups.AppGroupGUID = TokenAssignments.AppGroupGUID JOIN
+    Policies pol ON TokenAssignments.PolicyID = pol.ID JOIN
+    Processes  ON TokenAssignments.TokenAssignmentID = Processes.TokenAssignmentID JOIN
+    DistinctApplications da ON Processes.DistinctApplicationID = da.DistinctApplicationID) AS BaseData
+
+PIVOT (
+	COUNT(FileName)
+	FOR Workstyle
+	IN ([Avecto.General Rules]
+		,[Avecto.High Flexibility]
+		,[Avecto.Local Admins]
+		,[Avecto.Medium Flexibility]
+		,[Avecto.Standard Users (Win 7)]
+		,[Avecto.Standard Users]
+		,[Best Practice.General Rules]
+		,[Best Practice.Standard Users])
+) AS PivotTable
+
+ORDER BY 'AppGroup'

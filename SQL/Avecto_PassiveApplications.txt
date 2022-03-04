@@ -1,0 +1,23 @@
+/* Change the daterange value to show the last number of days,
+by default it's less than or equal to 7 days
+ */ 
+
+DECLARE @daterange INT
+SET @daterange = 7
+--set this value
+ 
+ SELECT
+	MIN (Description) AS Description, 
+	MIN (Publisher) AS Publisher, 
+	MIN (ProductName) AS ProductName, 
+	MIN (ProductVersion) AS ProductVersion, 
+	MIN (ApplicationType) AS ApplicationType, 
+	COUNT(*) as ProcessCount,
+	COUNT(DISTINCT UserName) AS UserCount, 
+	COUNT(DISTINCT HostName) AS HostCount
+
+FROM AllApps 
+WHERE DATEDIFF(dd, ProcessStartTime, GetDate()) <=@daterange
+AND Passive = 1
+
+GROUP BY DistinctApplicationID
