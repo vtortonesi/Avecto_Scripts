@@ -1,0 +1,43 @@
+<#This script will execute ReleaseStagingLock if the DBCopyFromStagingLock table is present.
+ #>
+
+#SQL Database Variables
+#Add either the server/database instance name or database and server if using default instance
+
+$ServerInstance = "avw2012" #Change this to the DB Server Name and/or instance name
+$Database = "AvectoPrivilegeGuard" #Change this
+
+#Modify query
+$Query =    "IF Exists(
+       SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_NAME = N'DPCopyFromStagingLock')
+       BEGIN 
+       EXEC ReleaseStagingLock
+       END"
+
+$ConnectionTimeout = 30
+
+<# Build connection to SQL, query, and output results to log file. The account running this script needs rights to 
+execute ReleaseStagingLock in the DB.  Otherwise the connection string needs to be modified or SQL permissions in
+the Avecto DB need to be added #>
+
+$conn=new-object System.Data.SqlClient.SQLConnection
+$ConnectionString = "Server={0};Database={1};Integrated Security=True;Connect Timeout={2}" -f $ServerInstance,$Database,$ConnectionTimeout
+
+#Open Connection to SQL
+$conn.ConnectionString=$ConnectionString
+$conn.Open()
+
+#Execute SQL Query
+$cmd=new-object system.Data.SqlClient.SqlCommand($Query,$conn)
+$dataset=New-Object system.Data.DataSet
+$dataAdapter=New-Object system.Data.SqlClient.SqlDataAdapter($cmd)
+[void]$dataAdapter.fill($dataset)
+$conn.Close()
+
+#Check for log source and Write to log file after completion
+$logfile = Get-EventLog -Source "AvectoPG" -LogName Application
+if (! $logFile) {
+    New-EventLog -LogName "Application" -Source "AvectoPG"
+}
+Write-EventLog -LogName Application -Source "AvectoPG" -EntryType Information -Message "Release From Locking" -EventId 55100
