@@ -1,0 +1,81 @@
+
+#Import Modules - Hardcoded to the path
+
+Import-Module -Name 'C:\temp\Whitelist\Avecto.Defendpoint.Cmdlets.dll'
+Import-Module -Name 'C:\temp\Whitelist\Avecto.Defendpoint.Settings.dll'
+
+#SQL Work, gather instance and database info
+
+$ServerInstance = Read-Host "Enter server name and/or instance"
+$Database = Read-Host "Enter Database name" 
+
+#Query SCCM database
+$Query =    "SELECT 
+	         ProdID0 AS 'ProductName', 
+	         DisplayName0 'Description', 
+	         Publisher0 'Publisher'
+             FROM v_Add_Remove_Programs
+             WHERE Publisher0 <> 'Microsoft Corporation'
+             GROUP BY Publisher0, DisplayName0, ProdID0"
+
+$output = "$($env:Temp)\Whitelist.csv"
+
+$ConnectionTimeout = 30
+
+#Build connection to SQL, query, and output results. The account should be part of SQL security.  Otherwise the connection string needs to be modified.
+$conn=new-object System.Data.SqlClient.SQLConnection
+$ConnectionString = "Server={0};Database={1};Integrated Security=True;Connect Timeout={2}" -f $ServerInstance,$Database,$ConnectionTimeout
+
+#Open Connection to SQL
+$conn.ConnectionString=$ConnectionString
+$conn.Open()
+
+#Execute SQL Query
+$cmd=new-object system.Data.SqlClient.SqlCommand($Query,$conn)
+$dataset=New-Object system.Data.DataSet
+$dataAdapter=New-Object system.Data.SqlClient.SqlDataAdapter($cmd)
+[void]$dataAdapter.fill($dataset)
+$conn.Close()
+
+#Output results to file
+$dataset.Tables[0] | ConvertTo-Csv -NoTypeInformation | ForEach-Object {$_ -replace '"',""} | Out-File $output
+
+#Avecto API Work
+
+#Create new policy
+$policy = New-Object Avecto.Defendpoint.Settings.Configuration
+
+#CSV file output from SQL query
+
+$app = Import-Csv -Path $output
+
+#Create application group and meta data
+$appGroup = New-Object Avecto.Defendpoint.Settings.ApplicationGroup
+$appGroup.Name = "Whitelisted"
+$appGroup.Description = "Corporate Trusted Applications"
+$policy.ApplicationGroups.Add($appGroup)
+
+#Array variable for Application Group
+$appGroupArray = 0
+
+#Create application group rules.  Enable application definitions (as you add properties make sure you add additional Check...)
+foreach ($a in $app){
+
+    $appRules = New-Object Avecto.Defendpoint.Settings.Application $policy
+    $appRules.Type = [Avecto.Defendpoint.Settings.ApplicationType]::Executable
+    $appRules.Description = $a.Description
+    $appRules.Publisher = $a.Publisher
+    $appRules.PublisherMatchCase = $true
+    $appRules.ProductName = $a.ProductName
+
+ 
+    $appRules.CheckPublisher = $true
+    $appRules.CheckProductName =$true
+
+    $policy.ApplicationGroups[$appGroupArray].Applications.Add($appRules)
+}
+
+Set-DefendpointSettings -SettingsObject $policy -LocalFile -FileLocation "$($env:Temp)\whitelist.xml" 
+
+#Cleanup .csv file
+Remove-Item $output
